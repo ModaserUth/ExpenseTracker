@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدير المصاريف الذكي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center text-blue-800 mb-8">إدارة المصاريف الشهرية</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-center">
+            <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-blue-500">
+                <h3 class="text-gray-500 text-sm">الدخل الشهري</h3>
+                <p id="income-val" class="text-2xl font-bold text-blue-600">20,000</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-red-500">
+                <h3 class="text-gray-500 text-sm">إجمالي المصاريف</h3>
+                <p id="expense-val" class="text-2xl font-bold text-red-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-green-500">
+                <h3 class="text-gray-500 text-sm">المتبقي</h3>
+                <p id="remaining-val" class="text-2xl font-bold text-green-600">0</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">إضافة مصروف جديد</h2>
+                <form id="expense-form" class="space-y-4">
+                    <input type="text" id="title" placeholder="عنوان المصروف (مثلاً: فاتورة الكهرباء)" class="w-full p-2 border rounded" required>
+                    <input type="number" id="amount" placeholder="المبلغ" class="w-full p-2 border rounded" required>
+                    <select id="category" class="w-full p-2 border rounded">
+                        <option value="طعام">طعام</option>
+                        <option value="مواصلات">مواصلات</option>
+                        <option value="سكن">سكن</option>
+                        <option value="ترفيه">ترفيه</option>
+                        <option value="أخرى">أخرى</option>
+                    </select>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">إضافة</button>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">توزيع المصاريف</h2>
+                <canvas id="expenseChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+        let chart;
+
+        // دالة لجلب التقارير وتحديث الواجهة
+        async function updateDashboard() {
+            const res = await fetch(`${API_URL}/report`);
+            const data = await res.json();
+            document.getElementById('income-val').innerText = data.total_income.toLocaleString();
+            document.getElementById('expense-val').innerText = data.total_expenses.toLocaleString();
+            document.getElementById('remaining-val').innerText = data.remaining_balance.toLocaleString();
+            updateChart();
+        }
+
+        // دالة لتحديث الرسم البياني
+        async function updateChart() {
+            const res = await fetch(`${API_URL}/chart-data`);
+            const chartData = await res.json();
+
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        data: chartData.data,
+                        backgroundColor: ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#6366F1']
+                    }]
+                }
+            });
+        }
+
+        // معالجة إرسال النموذج
+        document.getElementById('expense-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                title: document.getElementById('title').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                category: document.getElementById('category').value
+            };
+
+            await fetch(`${API_URL}/add-expense`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            document.getElementById('expense-form').reset();
+            updateDashboard();
+        };
+
+        // تشغيل عند التحميل
+        updateDashboard();
+    </script>
+</body>
+</html>
