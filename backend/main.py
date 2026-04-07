@@ -60,3 +60,19 @@ async def read_index():
     # نحدد مسار ملف index.html بالخروج من مجلد backend ثم الدخول لمجلد frontend
     frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
     return FileResponse(frontend_path)
+
+
+
+# أضف هذا المسار لتحديث الدخل
+@app.post("/update-income")
+def update_income(amount: float, db: Session = Depends(get_db)):
+    # نبحث عن أول سجل في الإعدادات، لو مش موجود ننشئه
+    settings = db.query(models.Settings).first()
+    if not settings:
+        settings = models.Settings(monthly_income=amount)
+        db.add(settings)
+    else:
+        settings.monthly_income = amount
+    
+    db.commit()
+    return {"message": "Income updated successfully", "new_income": amount}
